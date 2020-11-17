@@ -209,9 +209,13 @@ pub async fn call(
     forward_uri: &str,
     request: Request<Body>,
 ) -> Result<Response<Body>, ProxyError> {
+    let http_version = request.version();
     let proxied_request = create_proxied_request(client_ip, &forward_uri, request)?;
 
-    let client = Client::new();
+    let client = match http_version {
+        hyper::Version::HTTP_2 =>  Client::builder().http2_only(true).build_http(),
+        _ => Client::new()
+    };
     let response = client.request(proxied_request).await?;
     let proxied_response = create_proxied_response(response);
     Ok(proxied_response)
